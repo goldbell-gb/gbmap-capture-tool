@@ -1,196 +1,190 @@
-
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <title>카카오 지도 - 마커 + 화면 중심 보정</title>
-  <style>
-    html, body { margin: 0; padding: 0; font-family: sans-serif; width: 10000px; height: 10000px; overflow: scroll; }
-    #controls {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      z-index: 999;
-      background: rgba(255, 255, 255, 0.95);
-      padding: 12px;
-      border-radius: 8px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.2);
-    }
-    #map {
-      overflow: scroll;
-      min-width: 10000px;
-      min-height: 10000px;
-      max-width: 10000px;
-      max-height: 10000px;
-      width: 10000px;
-      height: 10000px;
-    }
-    input, select, button {
-      margin-top: 5px;
-      padding: 6px;
-      width: 180px;
-    }
-    #toggle {
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      background: #333;
-      color: white;
-      padding: 8px 12px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      z-index: 1000;
-    }
-  </style>
-</head>
-<body>
-  <button id="toggle" onclick="toggleUI()">UI 숨기기</button>
-  <div id="controls">
-    <label>지도 유형:</label>
-    <select id="mapType" onchange="changeMapType()">
-      <option value="ROADMAP">일반지도</option>
-      <option value="HYBRID">하이브리드</option>
-      <option value="SKYVIEW" selected>위성지도</option>
-    </select><br>
+  <head>
+    <meta charset="utf-8" />
+    <title>카카오 지도 캡처 툴</title>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        font-family: sans-serif;
+        overflow: scroll;
+      }
+      #map-wrapper {
+        width: 9000px;
+        height: 9000px;
+        overflow: scroll;
+      }
+      #map {
+        width: 9000px;
+        height: 9000px;
+      }
+      #toolbar {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 10px;
+        border-radius: 10px;
+        z-index: 100;
+      }
+      input, select, button {
+        margin: 4px 0;
+      }
+    </style>
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=b0bf0079d2279c9cef60d94996a263b6&libraries=services"></script>
+  </head>
+  <body>
+    <div id="toolbar">
+      <div>
+        지도 유형:
+        <select id="mapType">
+          <option value="ROADMAP">일반지도</option>
+          <option value="HYBRID">하이브리드</option>
+          <option value="SATELLITE">위성지도</option>
+        </select>
+      </div>
+      <div>
+        주소 검색:
+        <input type="text" id="addr" placeholder="예: 구반포역" />
+        <button onclick="moveToAddress()">주소로 이동</button>
+      </div>
+      <div>
+        지도 크기(px):<br />
+        가로: <input type="number" id="width" value="9000" /> <br />
+        세로: <input type="number" id="height" value="9000" />
+      </div>
+      <div>
+        줌 레벨:
+        <select id="zoom">
+          <option value="1">1 (최소 확대)</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5" selected>5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value="10">10 (최대 확대)</option>
+        </select>
+      </div>
+      <button onclick="applySettings()">설정 적용</button><br />
+      <button onclick="savePosition()">📌 현재 위치 저장</button>
+      <button onclick="restorePosition()">📍 위치 복원</button>
+      <button onclick="scrollToMapCenter()">🎯 중앙 맞추기</button>
+    </div>
+    <div id="map-wrapper">
+      <div id="map"></div>
+    </div>
+    <script>
+      let map;
+      let marker = null;
+      let savedCenter = null;
 
-    <label>주소 검색:</label>
-    <input type="text" id="addr" placeholder="예: 구반포역" />
-    <button onclick="searchAddr()">주소로 이동</button><br>
+      function initMap() {
+        const container = document.getElementById("map");
+        const options = {
+          center: new kakao.maps.LatLng(37.503063, 126.996637),
+          level: parseInt(document.getElementById("zoom").value)
+        };
+        map = new kakao.maps.Map(container, options);
 
-    <label>지도 크기(px):</label><br>
-    가로: <input type="number" id="mapWidth" value="9000"><br>
-    세로: <input type="number" id="mapHeight" value="9000"><br>
-    줌 레벨:
-    <select id="zoomLevel">
-      <option value="1">1 (최소 확대)</option>
-      <option value="3">3</option>
-      <option value="5" selected>5</option>
-      <option value="7">7</option>
-      <option value="10">10</option>
-      <option value="12">12</option>
-      <option value="14">14 (최대 확대)</option>
-    </select><br><br>
+        kakao.maps.event.addListener(map, 'zoom_changed', function() {
+          setTimeout(scrollToMapCenter, 300);
+        });
 
-    <button onclick="applySettings()">설정 적용</button><br><br>
+        kakao.maps.event.addListener(map, 'idle', function onceIdle() {
+          scrollToMapCenter();
+          kakao.maps.event.removeListener(map, 'idle', onceIdle);
+        });
 
-    <label><input type="checkbox" id="markerToggle" checked> 마커 사용</label><br>
-    <button onclick="clearMarker()">📍 마커 초기화</button><br><br>
+        kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
+          if (!document.getElementById("markerToggle").checked) return;
+          const latlng = mouseEvent.latLng;
+          if (marker) marker.setMap(null);
+          marker = new kakao.maps.Marker({ position: latlng });
+          marker.setMap(map);
+        });
+      }
 
-    <button onclick="savePosition()">📌 현재 위치 저장</button>
-    <button onclick="restorePosition()">📍 위치 복원</button>
-    <button onclick="scrollToMapCenter()">🎯 중앙 맞추기</button>
-  </div>
-
-  <div id="map-wrapper" style="width: 9000px; height: 9000px; overflow: scroll;">
-    <div id="map"></div>
-  </div>
-
-  <script type="text/javascript"
-    src="//dapi.kakao.com/v2/maps/sdk.js?appkey=b0bf0079d2279c9cef60d94996a263b6&autoload=false&libraries=services"></script>
-  <script>
-    var map;
-    var savedCenter = null;
-    var marker = null;
-
-    kakao.maps.load(function() {
-      initMap();
-    });
-
-    function initMap() {
-      const width = parseInt(document.getElementById('mapWidth').value);
-      const height = parseInt(document.getElementById('mapHeight').value);
-      const zoom = parseInt(document.getElementById('zoomLevel').value);
-      const type = document.getElementById("mapType").value;
-
-      const mapDiv = document.getElementById('map');
-      mapDiv.style.width = width + 'px';
-      mapDiv.style.height = height + 'px';
-
-      map = new kakao.maps.Map(mapDiv, {
-        center: new kakao.maps.LatLng(37.503063, 126.996637),
-        level: zoom,
-        mapTypeId: kakao.maps.MapTypeId[type]
-      });
-
-      scrollToMapCenter(); // 초기 스크롤
-
-      kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
-        if (!document.getElementById('markerToggle').checked) return;
-        const latlng = mouseEvent.latLng;
-        placeMarker(latlng);
-      });
-
-      kakao.maps.event.addListener(map, 'center_changed', scrollToMapCenter);
-      kakao.maps.event.addListener(map, 'zoom_changed', function() {
-        setTimeout(scrollToMapCenter, 300);
-      });
-    }
-
-    function scrollToMapCenter() {
-      const mapDiv = document.getElementById('map');
-      const centerX = mapDiv.offsetLeft + mapDiv.offsetWidth / 2;
-      const centerY = mapDiv.offsetTop + mapDiv.offsetHeight / 2;
-      window.scrollTo(centerX - window.innerWidth / 2, centerY - window.innerHeight / 2);
-    }
-
-    function changeMapType() {
-      const type = document.getElementById("mapType").value;
-      map.setMapTypeId(kakao.maps.MapTypeId[type]);
-    }
-
-    function searchAddr() {
-      const addr = document.getElementById("addr").value;
-      const geocoder = new kakao.maps.services.Geocoder();
-      geocoder.addressSearch(addr, function(result, status) {
-        if (status === kakao.maps.services.Status.OK) {
-          const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
-          map.panTo(coords);
-          if (document.getElementById('markerToggle').checked) {
-            placeMarker(coords);
+      function moveToAddress() {
+        const addr = document.getElementById("addr").value;
+        const geocoder = new kakao.maps.services.Geocoder();
+        geocoder.addressSearch(addr, function(result, status) {
+          if (status === kakao.maps.services.Status.OK) {
+            const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
+            map.setCenter(coords);
+            if (document.getElementById("markerToggle").checked) {
+              if (marker) marker.setMap(null);
+              marker = new kakao.maps.Marker({ position: coords });
+              marker.setMap(map);
+            }
+            setTimeout(scrollToMapCenter, 300);
           }
-        } else {
-          alert("주소를 찾을 수 없습니다.");
+        });
+      }
+
+      function applySettings() {
+        const width = parseInt(document.getElementById("width").value);
+        const height = parseInt(document.getElementById("height").value);
+        const level = parseInt(document.getElementById("zoom").value);
+        const type = document.getElementById("mapType").value;
+
+        document.getElementById("map").style.width = width + "px";
+        document.getElementById("map").style.height = height + "px";
+        document.getElementById("map-wrapper").style.width = width + "px";
+        document.getElementById("map-wrapper").style.height = height + "px";
+
+        map.setLevel(level);
+        map.relayout();
+
+        if (type === "ROADMAP") map.setMapTypeId(kakao.maps.MapTypeId.ROADMAP);
+        else if (type === "SATELLITE") map.setMapTypeId(kakao.maps.MapTypeId.SKYVIEW);
+        else if (type === "HYBRID") map.setMapTypeId(kakao.maps.MapTypeId.HYBRID);
+
+        resizeDocumentToMap();
+        setTimeout(scrollToMapCenter, 300);
+      }
+
+      function savePosition() {
+        savedCenter = map.getCenter();
+        alert("현재 위치 저장됨!");
+      }
+
+      function restorePosition() {
+        if (savedCenter) {
+          map.setCenter(savedCenter);
+          setTimeout(scrollToMapCenter, 300);
         }
-      });
-    }
-
-    function placeMarker(position) {
-      if (marker) marker.setMap(null);
-      marker = new kakao.maps.Marker({ position: position });
-      marker.setMap(map);
-    }
-
-    function clearMarker() {
-      if (marker) {
-        marker.setMap(null);
-        marker = null;
       }
-    }
 
-    function applySettings() {
-      initMap();
-    }
-
-    function savePosition() {
-      savedCenter = map.getCenter();
-      alert("현재 위치 저장됨");
-    }
-
-    function restorePosition() {
-      if (savedCenter) {
-        map.setCenter(savedCenter);
-      } else {
-        alert("저장된 위치가 없습니다.");
+      function scrollToMapCenter() {
+        const mapDiv = document.getElementById("map");
+        const center = map.getCenter();
+        const projection = map.getProjection();
+        const point = projection.containerPointFromCoords(center);
+        const scrollLeft = point.x - window.innerWidth / 2;
+        const scrollTop = point.y - window.innerHeight / 2;
+        window.scrollTo(scrollLeft, scrollTop);
       }
-    }
 
-    function toggleUI() {
-      const ui = document.getElementById("controls");
-      ui.style.display = ui.style.display === "none" ? "block" : "none";
-      const toggleBtn = document.getElementById("toggle");
-      toggleBtn.innerText = ui.style.display === "none" ? "UI 보이기" : "UI 숨기기";
-    }
-  </script>
-</body>
+      function resizeDocumentToMap() {
+        const width = parseInt(document.getElementById("width").value);
+        const height = parseInt(document.getElementById("height").value);
+        document.documentElement.style.width = width + "px";
+        document.documentElement.style.height = height + "px";
+        document.body.style.width = width + "px";
+        document.body.style.height = height + "px";
+      }
+
+      document.getElementById("width").addEventListener("change", resizeDocumentToMap);
+      document.getElementById("height").addEventListener("change", resizeDocumentToMap);
+
+      window.onload = () => {
+        initMap();
+        resizeDocumentToMap();
+      };
+    </script>
+  </body>
 </html>
