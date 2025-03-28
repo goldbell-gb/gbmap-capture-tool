@@ -3,7 +3,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>카카오 지도 - 검색 위치 중심 이동</title>
+  <title>카카오 지도 - 마커 기능 추가</title>
   <style>
     html, body { margin: 0; padding: 0; font-family: sans-serif; }
     #controls {
@@ -68,6 +68,10 @@
     </select><br><br>
 
     <button onclick="applySettings()">설정 적용</button><br><br>
+
+    <label><input type="checkbox" id="markerToggle" checked> 마커 사용</label><br>
+    <button onclick="clearMarker()">📍 마커 초기화</button><br><br>
+
     <button onclick="savePosition()">📌 현재 위치 저장</button>
     <button onclick="restorePosition()">📍 위치 복원</button>
   </div>
@@ -79,6 +83,7 @@
   <script>
     var map;
     var savedCenter = null;
+    var marker = null;
 
     kakao.maps.load(function() {
       initMap();
@@ -99,6 +104,12 @@
         level: zoom,
         mapTypeId: kakao.maps.MapTypeId[type]
       });
+
+      kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
+        if (!document.getElementById('markerToggle').checked) return;
+        const latlng = mouseEvent.latLng;
+        placeMarker(latlng);
+      });
     }
 
     function changeMapType() {
@@ -112,11 +123,27 @@
       geocoder.addressSearch(addr, function(result, status) {
         if (status === kakao.maps.services.Status.OK) {
           const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
-          map.panTo(coords); // 화면 중심으로 부드럽게 이동
+          map.panTo(coords);
+          if (document.getElementById('markerToggle').checked) {
+            placeMarker(coords);
+          }
         } else {
           alert("주소를 찾을 수 없습니다.");
         }
       });
+    }
+
+    function placeMarker(position) {
+      if (marker) marker.setMap(null); // 기존 마커 제거
+      marker = new kakao.maps.Marker({ position: position });
+      marker.setMap(map);
+    }
+
+    function clearMarker() {
+      if (marker) {
+        marker.setMap(null);
+        marker = null;
+      }
     }
 
     function applySettings() {
