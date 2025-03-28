@@ -1,0 +1,147 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>카카오 지도 - 최종 완성형</title>
+  <style>
+    html, body { margin: 0; padding: 0; font-family: sans-serif; }
+    #controls {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 999;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 12px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.2);
+    }
+    #map {
+      width: 9000px;
+      height: 9000px;
+    }
+    input, select, button {
+      margin-top: 5px;
+      padding: 6px;
+      width: 180px;
+    }
+    #toggle {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: #333;
+      color: white;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <button id="toggle" onclick="toggleUI()">UI 숨기기</button>
+  <div id="controls">
+    <label>지도 유형:</label>
+    <select id="mapType" onchange="changeMapType()">
+      <option value="ROADMAP">일반지도</option>
+      <option value="HYBRID">하이브리드</option>
+      <option value="SKYVIEW" selected>위성지도</option>
+    </select><br>
+
+    <label>주소 검색:</label>
+    <input type="text" id="addr" placeholder="예: 구반포역" />
+    <button onclick="searchAddr()">주소로 이동</button><br>
+
+    <label>지도 크기(px):</label><br>
+    가로: <input type="number" id="mapWidth" value="9000"><br>
+    세로: <input type="number" id="mapHeight" value="9000"><br>
+    줌 레벨:
+    <select id="zoomLevel">
+      <option value="1">1 (최소 확대)</option>
+      <option value="3">3</option>
+      <option value="5" selected>5</option>
+      <option value="7">7</option>
+      <option value="10">10</option>
+      <option value="12">12</option>
+      <option value="14">14 (최대 확대)</option>
+    </select><br><br>
+
+    <button onclick="applySettings()">설정 적용</button><br><br>
+    <button onclick="savePosition()">📌 현재 위치 저장</button>
+    <button onclick="restorePosition()">📍 위치 복원</button>
+  </div>
+
+  <div id="map"></div>
+
+  <script type="text/javascript"
+    src="//dapi.kakao.com/v2/maps/sdk.js?appkey=b0bf0079d2279c9cef60d94996a263b6&autoload=false&libraries=services"></script>
+  <script>
+    var map;
+    var savedCenter = null;
+
+    kakao.maps.load(function() {
+      initMap();
+    });
+
+    function initMap() {
+      const width = parseInt(document.getElementById('mapWidth').value);
+      const height = parseInt(document.getElementById('mapHeight').value);
+      const zoom = parseInt(document.getElementById('zoomLevel').value);
+      const type = document.getElementById("mapType").value;
+
+      const mapDiv = document.getElementById('map');
+      mapDiv.style.width = width + 'px';
+      mapDiv.style.height = height + 'px';
+
+      map = new kakao.maps.Map(mapDiv, {
+        center: new kakao.maps.LatLng(37.503063, 126.996637),
+        level: zoom,
+        mapTypeId: kakao.maps.MapTypeId[type]
+      });
+    }
+
+    function changeMapType() {
+      const type = document.getElementById("mapType").value;
+      map.setMapTypeId(kakao.maps.MapTypeId[type]);
+    }
+
+    function searchAddr() {
+      const addr = document.getElementById("addr").value;
+      const geocoder = new kakao.maps.services.Geocoder();
+      geocoder.addressSearch(addr, function(result, status) {
+        if (status === kakao.maps.services.Status.OK) {
+          const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
+          map.setCenter(coords);
+        } else {
+          alert("주소를 찾을 수 없습니다.");
+        }
+      });
+    }
+
+    function applySettings() {
+      initMap();
+    }
+
+    function savePosition() {
+      savedCenter = map.getCenter();
+      alert("현재 위치 저장됨");
+    }
+
+    function restorePosition() {
+      if (savedCenter) {
+        map.setCenter(savedCenter);
+      } else {
+        alert("저장된 위치가 없습니다.");
+      }
+    }
+
+    function toggleUI() {
+      const ui = document.getElementById("controls");
+      ui.style.display = ui.style.display === "none" ? "block" : "none";
+      const toggleBtn = document.getElementById("toggle");
+      toggleBtn.innerText = ui.style.display === "none" ? "UI 보이기" : "UI 숨기기";
+    }
+  </script>
+</body>
+</html>
