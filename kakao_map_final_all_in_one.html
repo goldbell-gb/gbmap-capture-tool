@@ -17,11 +17,6 @@
       box-shadow: 0 0 5px rgba(0,0,0,0.2);
     }
     #map {
-      overflow: scroll;
-      min-width: 9000px;
-      min-height: 9000px;
-      max-width: 9000px;
-      max-height: 9000px;
       width: 9000px;
       height: 9000px;
     }
@@ -82,9 +77,7 @@
     <button onclick="scrollToMapCenter()">🎯 중앙 맞추기</button>
   </div>
 
-  <div id="map-wrapper" style="width: 9000px; height: 9000px; overflow: scroll;">
-    <div id="map"></div>
-  </div>
+  <div id="map"></div>
 
   <script type="text/javascript"
     src="//dapi.kakao.com/v2/maps/sdk.js?appkey=b0bf0079d2279c9cef60d94996a263b6&autoload=false&libraries=services"></script>
@@ -122,9 +115,7 @@
       });
 
       kakao.maps.event.addListener(map, 'center_changed', scrollToMapCenter);
-      kakao.maps.event.addListener(map, 'zoom_changed', function() {
-        setTimeout(scrollToMapCenter, 300);
-      });
+      kakao.maps.event.addListener(map, 'zoom_changed', scrollToMapCenter);
     }
 
     function scrollToMapCenter() {
