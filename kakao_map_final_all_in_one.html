@@ -82,7 +82,9 @@
     <button onclick="scrollToMapCenter()">🎯 중앙 맞추기</button>
   </div>
 
-  <div id="map"></div>
+  <div id="map-wrapper" style="width: 9000px; height: 9000px; overflow: scroll;">
+    <div id="map"></div>
+  </div>
 
   <script type="text/javascript"
     src="//dapi.kakao.com/v2/maps/sdk.js?appkey=b0bf0079d2279c9cef60d94996a263b6&autoload=false&libraries=services"></script>
