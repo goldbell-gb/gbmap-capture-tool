@@ -115,6 +115,12 @@
 
       kakao.maps.event.addListener(map, 'center_changed', scrollToMapCenter);
       kakao.maps.event.addListener(map, 'zoom_changed', scrollToMapCenter);
+
+      // 최초 로딩 후 중심 보정 (1회 실행)
+      kakao.maps.event.addListener(map, 'idle', function onceIdle() {
+        scrollToMapCenter();
+        kakao.maps.event.removeListener(map, 'idle', onceIdle);
+      });
     }
 
     function scrollToMapCenter() {
