@@ -114,6 +114,7 @@
       });
 
       kakao.maps.event.addListener(map, 'center_changed', scrollToMapCenter);
+      kakao.maps.event.addListener(map, 'zoom_changed', scrollToMapCenter);
     }
 
     function scrollToMapCenter() {
