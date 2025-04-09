@@ -35,6 +35,7 @@
     <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=b0bf0079d2279c9cef60d94996a263b6&libraries=services"></script>
   </head>
   <body>
+    <button onclick="toggleToolbar()" style="position: fixed; top: 10px; right: 10px; z-index: 101;">🧰 UI 토글</button>
     <div id="toolbar">
       <div>
         지도 유형:
@@ -98,14 +99,6 @@
           scrollToMapCenter();
           kakao.maps.event.removeListener(map, 'idle', onceIdle);
         });
-
-        kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
-          if (!document.getElementById("markerToggle").checked) return;
-          const latlng = mouseEvent.latLng;
-          if (marker) marker.setMap(null);
-          marker = new kakao.maps.Marker({ position: latlng });
-          marker.setMap(map);
-        });
       }
 
       function moveToAddress() {
@@ -115,11 +108,6 @@
           if (status === kakao.maps.services.Status.OK) {
             const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
             map.setCenter(coords);
-            if (document.getElementById("markerToggle").checked) {
-              if (marker) marker.setMap(null);
-              marker = new kakao.maps.Marker({ position: coords });
-              marker.setMap(map);
-            }
             setTimeout(scrollToMapCenter, 300);
           }
         });
@@ -176,6 +164,11 @@
         document.documentElement.style.height = height + "px";
         document.body.style.width = width + "px";
         document.body.style.height = height + "px";
+      }
+
+      function toggleToolbar() {
+        const bar = document.getElementById("toolbar");
+        bar.style.display = (bar.style.display === "none") ? "block" : "none";
       }
 
       document.getElementById("width").addEventListener("change", resizeDocumentToMap);
